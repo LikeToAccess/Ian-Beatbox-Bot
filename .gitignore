@@ -12,6 +12,7 @@ poetry.lock
 pyproject.toml
 *.m4a
 .replit
+*.exe
 
 
 # Distribution / packaging
