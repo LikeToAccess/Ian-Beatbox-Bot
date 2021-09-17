@@ -13,13 +13,15 @@
 import discord
 from discord.errors import *
 from discord.ext import commands#, tasks
-import youtube_dl
+# import youtube_dl
 import media
+import scraper
 
 
 credentials = media.read_file("credentials.md", filter=True)
 token = credentials[0]
 allowed_users = credentials[1:]
+scraper = scraper.Scraper()
 
 channel_id = {
 	"commands": 776367990560129066,
@@ -28,14 +30,14 @@ channel_id = {
 	"voice-chat": 841891161920241705,
 }
 
-ydl_opts = {
-    "format": "bestaudio/best",
-    "postprocessors": [{
-        "key": "FFmpegExtractAudio",
-        "preferredcodec": "mp3",
-        "preferredquality": "96",
-    }],
-}
+# ydl_opts = {
+#     "format": "bestaudio/best",
+#     "postprocessors": [{
+#         "key": "FFmpegExtractAudio",
+#         "preferredcodec": "mp3",
+#         "preferredquality": "96",
+#     }],
+# }
 
 bot = commands.Bot(command_prefix=
 	[
@@ -54,7 +56,69 @@ async def on_ready():
 	await set_status("cool music 24/7!", discord.Status.online)
 
 
+'''
+Discord Commands
+'''
+@bot.command()
+async def join(ctx, auto_rejoin=True):
+	# await ctx.message.delete()  # Deletes the invocation message
+	if ctx.author.voice and ctx.author.voice.channel:
+		voice_channel = ctx.author.voice.channel
+		user_is_currently_in_voice_channel = True
+	else:
+		voice_channel = bot.get_channel(channel_id["voice-chat"])
+		user_is_currently_in_voice_channel = False
+	feedback = await join_status_feedback(voice_channel, user_is_currently_in_voice_channel, auto_rejoin=auto_rejoin)
+	await send(feedback, silent=False)
 
+@bot.command(aliases=["disconnect", "bye", "exit"])
+async def leave(ctx):
+	# await ctx.message.delete()  # Deletes the invocation message
+	voice = discord.utils.get(bot.voice_clients)
+	try:
+		await voice.disconnect()
+		print("Left VC.")
+		await send("Bye-bye.")
+	except AttributeError:
+		await send("I am not in a VC.")
+
+@bot.command(aliases=["p", "add"])
+async def play(ctx, *song_name):
+	await join(ctx, auto_rejoin=False)
+	song_name = " ".join(song_name)
+	filename = "song.m4a"
+	if song_name.split("://", maxsplit=1)[0] in ["http", "https"]:
+		await send("Playing song via direct link...", silent=False)
+		print(song_name)
+		url = scraper.get_metadata(song_name)["url"]
+		print(f"DEBUG: {url}")
+		scraper.download(url, filename=filename)
+		await play_audio_file(filename)
+	else:
+		await send("Searching for matches...", silent=False)
+
+	# voice = discord.utils.get(bot.voice_clients)
+	# voice.play(discord.FFmpegPCMAudio("sample.mp3"), after=lambda e: print('done', e))
+
+
+# TODO: vvv Not working vvv
+# @bot.command()
+# async def volume(ctx, volume: int):
+# 	try:
+# 		ctx.voice_client.source.volume = volume / 100
+# 		await send(f"Changed volume to {volume}%.")
+# 	except AttributeError:
+# 		await send("I am not in a VC.")
+
+@bot.command()
+async def test(ctx):
+	await join(ctx, auto_rejoin=False)
+	await send("Playing test tones...", silent=False)
+	await play_audio_file("sample.mp3")
+
+'''
+Other Functions
+'''
 async def join_status_feedback(
 		voice_channel,
 		user_is_currently_in_voice_channel,
@@ -74,47 +138,10 @@ async def join_status_feedback(
 		# await send(f"You are not connected to a voice channel!\n{join_status} default channel \"{voice_channel.name}\"")
 	return False
 
-'''
-Discord Commands
-'''
-@bot.command()
-async def join(ctx, auto_rejoin=True):
-	# await ctx.message.delete()  # Deletes the invocation message
-	if ctx.author.voice and ctx.author.voice.channel:
-		voice_channel = ctx.author.voice.channel
-		user_is_currently_in_voice_channel = True
-	else:
-		voice_channel = bot.get_channel(channel_id["voice-chat"])
-		user_is_currently_in_voice_channel = False
-	feedback = await join_status_feedback(voice_channel, user_is_currently_in_voice_channel)
-	await send(feedback, silent=False)
-
-@bot.command(aliases=["disconnect", "bye", "exit"])
-async def leave(ctx):
-	# await ctx.message.delete()  # Deletes the invocation message
+async def play_audio_file(filename, after=bot.done_talking):
 	voice = discord.utils.get(bot.voice_clients)
-	try:
-		await voice.disconnect()
-		print("Left VC.")
-		await send("Bye-bye.")
-	except AttributeError:
-		await send("I am not in a VC.")
+	voice.play(discord.FFmpegPCMAudio(filename), after=after)
 
-@bot.command(aliases=["p", "add"])
-async def play(ctx, *song_name):
-	await join(ctx, auto_rejoin=False)
-	movie_name = " ".join(song_name)
-	if movie_name.split("://", maxsplit=1)[0] in ["http", "https"]:
-		await send("Playing song via direct link...", silent=False)
-	else:
-		await send("Searching for matches...", silent=False)
-
-	# TODO: Either download the MP3 from the link or search for results and get the MP3 from the first result
-
-
-'''
-Other Functions
-'''
 async def set_status(activity, status=discord.Status.online):
 	await bot.change_presence(status=status, activity=discord.Game(activity))
 
