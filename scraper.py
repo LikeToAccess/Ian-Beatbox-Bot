@@ -1,11 +1,22 @@
 from threading import Thread
 import youtube_dl
 import stream
+import os
+
+
+ydl_opts = {
+		'format': 'bestaudio/best',
+		'postprocessors': [{
+			'key': 'FFmpegExtractAudio',
+			'preferredcodec': 'mp3',
+			'preferredquality': '196',
+		}],
+	}
 
 
 class Scraper:
 	def __init__(self):
-		self.ydl = youtube_dl.YoutubeDL({"outtmpl": "%(id)s.%(ext)s"})
+		self.ydl = youtube_dl.YoutubeDL(ydl_opts)
 
 	def get_metadata(self, url):  # url should be youtube link
 		with self.ydl:
@@ -13,6 +24,7 @@ class Scraper:
 				url,
 				download=False # We just want to extract the info
 			)
+			self.ydl.download([url])
 
 		if "entries" in result:
 			# Can be a playlist or a list of videos
@@ -26,6 +38,13 @@ class Scraper:
 			if result["fps"] is None:
 				metadata = result
 		# print(metadata)
+		for file in os.listdir():
+			if file.endswith(".mp3"):
+				try:
+					os.rename(file, "song.mp3")
+				except FileExistsError:
+					os.remove("song.mp3")
+					os.rename(file, "song.mp3")
 		return metadata
 
 	def download(self, url, filename):

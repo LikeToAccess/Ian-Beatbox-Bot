@@ -23,11 +23,16 @@ token = credentials[0]
 allowed_users = credentials[1:]
 scraper = scraper.Scraper()
 
+# channel_id = {
+# 	"commands": 776367990560129066,
+# 	"log": 776354053222826004,
+# 	"spam": 780948981299150888,
+# 	"voice-chat": 841891161920241705,
+# }
+
 channel_id = {
-	"commands": 776367990560129066,
-	"log": 776354053222826004,
-	"spam": 780948981299150888,
-	"voice-chat": 841891161920241705,
+	"spam": 547119582565892131,
+	"voice-chat": 790742242376941599
 }
 
 # ydl_opts = {
@@ -52,6 +57,7 @@ Discord Functions
 '''
 @bot.event
 async def on_ready():
+	media.remove_file("song.m4a")
 	print(f"{bot.user} successfuly connected!")
 	await set_status("cool music 24/7!", discord.Status.online)
 
@@ -92,7 +98,7 @@ async def play(ctx, *song_name):
 		print(song_name)
 		url = scraper.get_metadata(song_name)["url"]
 		print(f"DEBUG: {url}")
-		scraper.download(url, filename=filename)
+		# scraper.download(url, filename=filename)
 		await play_audio_file(filename)
 	else:
 		await send("Searching for matches...", silent=False)
@@ -138,9 +144,9 @@ async def join_status_feedback(
 		# await send(f"You are not connected to a voice channel!\n{join_status} default channel \"{voice_channel.name}\"")
 	return False
 
-async def play_audio_file(filename, after=bot.done_talking):
+async def play_audio_file(filename, after=None):
 	voice = discord.utils.get(bot.voice_clients)
-	voice.play(discord.FFmpegPCMAudio(filename), after=after)
+	voice.play(discord.FFmpegPCMAudio(filename), after=after)  # TODO: 
 
 async def set_status(activity, status=discord.Status.online):
 	await bot.change_presence(status=status, activity=discord.Game(activity))
